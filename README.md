@@ -1,73 +1,163 @@
-# Welcome to your Lovable project
+# 🧍‍♂️ AI-Based Full Body Measurement Estimation (Approximate)
 
-## Project info
+## 📌 Overview
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This project estimates **approximate human body measurements** using **three RGB images** of the same person:
 
-## How can I edit this code?
+- Front view  
+- Side view  
+- Standing (neutral posture)  
 
-There are several ways of editing your application.
+The system uses **hybrid pose estimation** and **anthropometric scaling** to infer body dimensions **without** requiring:
 
-**Use Lovable**
+- Depth sensors  
+- Calibration objects  
+- User-provided height  
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+⚠️ Measurements are **approximate** and intended for **educational and demonstration purposes only**.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 📥 Input
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+The system requires **three full-body RGB images**:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Front view image  
+2. Side view image  
+3. Standing / neutral posture image  
 
-Follow these steps:
+### Image Guidelines
+- Well-lit environment  
+- Full body visible (head to feet)  
+- Neutral standing posture  
+- Minimal background clutter  
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+---
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 📤 Output
 
-# Step 3: Install the necessary dependencies.
-npm i
+The system estimates the following measurements (in **centimeters**):
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+- Estimated Height  
+- Shoulder Width  
+- Chest (derived)  
+- Hip (derived)  
+- Arm Length  
+- Leg / Inseam Length  
 
-**Edit a file directly in GitHub**
+If image quality is low, the system returns a warning indicating reduced accuracy.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Example warning:
+⚠️ Low image clarity may reduce chest/hip accuracy
 
-**Use GitHub Codespaces**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## 🧠 Approach Used
 
-This project is built with:
+### 1️⃣ Hybrid Pose Estimation
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Two pre-trained pose estimation models are used:
 
-## How can I deploy this project?
+#### MediaPipe Pose
+- Stable and fast skeletal keypoint detection  
+- Reliable on CPU environments  
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+#### YOLOv8 COCO Pose
+- COCO-standard pose keypoints  
+- Used as a secondary validation model  
 
-## Can I connect a custom domain to my Lovable project?
+**For each image:**
+- Keypoints are extracted using both models  
+- Measurements are fused using **median aggregation**  
+- This reduces noise and model-specific errors  
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 2️⃣ Multi-View Fusion
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Measurements are computed independently for:
+- Front image  
+- Side image  
+- Standing image  
+
+Final values are obtained using the **median across all valid views**, which:
+- Improves robustness  
+- Reduces pose-related errors  
+- Handles partial occlusions more effectively  
+
+---
+
+## 📏 Scaling Logic
+
+Since absolute scale cannot be recovered from RGB images alone, the system uses a **weak anthropometric scaling strategy**.
+
+### Key Steps:
+- Pixel-level skeletal measurements are extracted using pose keypoints  
+- Scale-independent ratios are computed:
+  - `arm_length / body_height`
+  - `leg_length / body_height`
+- A **soft anthropometric prior** (average human shoulder width) is used to estimate height  
+- Chest and hip measurements are **derived** using anthropometric correction factors  
+
+### This approach avoids:
+- Fixing height to a constant value  
+- Asking users to manually input height  
+- Unrealistic pixel-to-centimeter conversions  
+
+---
+
+## ⚠️ Assumptions & Limitations
+
+### Assumptions
+- Full body visible in all images  
+- Neutral standing posture  
+- RGB images only (no depth information)  
+- Average human body proportions apply  
+
+### Limitations
+- Exact height cannot be guaranteed without a reference object or depth sensor  
+- Chest and hip measurements are approximations  
+- Loose clothing, motion blur, or poor lighting may reduce accuracy  
+- Measurements are **not medical-grade**  
+
+If image clarity is low, the system explicitly reports a warning.
+
+---
+
+## 🎯 Accuracy & Justification
+
+- Target accuracy: **~80–85%** under controlled conditions  
+- Accuracy is evaluated relative to **pose-derived pseudo ground truth**  
+- Arm and leg lengths are generally more reliable than chest or hip girth  
+- Hybrid models and multi-view fusion significantly improve stability  
+
+> The project prioritizes **realistic accuracy, transparency, and explainability** over exaggerated claims.
+
+---
+
+## 🛠️ Tech Stack
+
+- Python  
+- FastAPI  
+- MediaPipe Pose  
+- YOLOv8 (Ultralytics – COCO Pose)  
+- OpenCV  
+- NumPy  
+
+---
+
+## ⚠️ Disclaimer
+
+This system is developed **solely for educational and research demonstration purposes**.
+
+- Measurements are approximate  
+- Not suitable for medical, legal, or professional tailoring applications  
+
+Use at your own discretion.
+
+---
+
+## ✅ Conclusion
+
+This project demonstrates how **hybrid pose estimation**, **multi-view fusion**, and **anthropometric reasoning** can be combined to estimate human body measurements from RGB images in a **practical, honest, and explainable** manner—without relying on depth sensors or manual calibration.
